@@ -20,6 +20,7 @@
 
 #define WIN_SCORE 32
 #define tam 4
+char continuar_jogando;
 
 typedef enum {
     UP,
@@ -137,16 +138,21 @@ void add_random_number(Game *game) {
 }
 
 void print_board(const Game *game) {
+    system("clear"); //nao deixa os boards acumularem
     printf("-----------------------------\n");
     for (int i = 0; i < tam; i++) {
         printf("|");
         for (int j = 0; j < tam; j++) {
-            printf(" %4d |", game->board[i][j]);
+            if(game->board[i][j] == 0){
+                printf("      |");
+            }
+            else{
+                printf(" %4d |", game->board[i][j]);
+            }
         }
         printf("\n");
         printf("-----------------------------\n");    
     }
-    
     printf("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
 }
 
@@ -175,7 +181,6 @@ void load_game(Game *game, const char *filename) {
         perror("Erro ao carregar o jogo");
         return;
     }
-
     // Aloca memória para as estruturas 
     game->board = (int **) malloc(tam * sizeof(int *));
     game->prev_board = (int **) malloc(tam * sizeof(int *));
@@ -185,7 +190,6 @@ void load_game(Game *game, const char *filename) {
         fclose(file);
         return;
     }
-
     for (int i = 0; i < tam; i++) {// Aloca memória para cada linha
         game->board[i] = (int *) malloc(tam * sizeof(int));
         game->prev_board[i] = (int *) malloc(tam * sizeof(int));
@@ -196,7 +200,6 @@ void load_game(Game *game, const char *filename) {
             return;
         }
     }
-
     // Lê os dados do arquivo para o estado do jogo
     fread(&game->score, sizeof(int), 1, file);
     fread(&game->highscore, sizeof(int), 1, file);
@@ -245,7 +248,6 @@ void load_highscore(int *highscore) {
 void move_board(Game *game, Direction dir) {
     int i, j, k;
     bool moved = false;
-    int old_score = game->score;
     backup(game);
 
     switch (dir) {
@@ -342,6 +344,7 @@ void move_board(Game *game, Direction dir) {
 
     if (moved) {
         add_random_number(game);
+        add_random_number(game);
         game->moves++;
     }
     else {
@@ -353,11 +356,11 @@ bool check_win(const Game *game) {
     for (int i = 0; i < tam; i++) {
         for (int j = 0; j < tam; j++) {
             if (game->board[i][j] == WIN_SCORE) {
-                return true;
+                return 1;
             }
         }
     }
-    return false;
+    return 0;
 }
 
 int can_move(const Game *game) { 
@@ -374,6 +377,13 @@ int can_move(const Game *game) {
     }
     return 0; // não há mais jogadas possíveis
 }
+
+// int keep_playing(const Game *game){
+//     if(continuar_jogando == true){
+//         return 1;
+//     }
+//     return 0;
+// }
 
 int menu() {
     int opcao;
@@ -416,8 +426,35 @@ int main() {
             break;
     }
 
-    while (!game.game_over) {
+    while (1) {
         print_board(&game);
+        
+        if (can_move(&game) == 0) {
+            printf("Fim de jogo!\n");
+            printf("Pontuação Máxima: %d\n", game.score);
+            game.game_over = true;
+        }
+
+        if (check_win(&game)) {
+            printf("Você ganhou! Parabéns!\n");
+            printf("Pontuação Final: %d\n", game.score);
+            printf("Deseja continuar jogando? K para parar, J para continuar\n");
+            scanf(" %c ", &continuar_jogando);
+            if(continuar_jogando == 'J' || 'j'){
+                game.game_over = false;
+            }
+            else if(continuar_jogando == 'K' || 'k'){
+                printf("Jogo finalizado.");
+                scanf("%c", &continuar_jogando);
+            }  //MUDAR ESTADO DO JOGO DE VERDADE
+            else{
+                game.game_over = false;
+            }
+
+            break;
+        }
+
+
         printf("Pressione 'b' para salvar, z para desfazer jogada o jogo ou W, A, S, D para mover: ");
         
         char move;
@@ -462,18 +499,6 @@ int main() {
                 continue;
         }    
         update_score(game.score, &game);// Atualiza o score e o highscore
-
-        if (check_win(&game)) {
-            printf("Você ganhou! Parabéns!\n");
-            printf("Pontuação Final: %d\n", game.score);
-            break;
-        }
-
-        if (can_move(&game) == 0) {
-            printf("Fim de jogo!\n");
-            printf("Pontuação Final: %d\n", game.score);
-            game.game_over = true;
-        }
     }
     save_game(&game, "savegame.txt");// Salva o jogo ao final
     save_highscore(&game); // Salva o highscore atualizado
