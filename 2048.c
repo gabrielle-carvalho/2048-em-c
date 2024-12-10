@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h> //setas teclado 
-//capturar as teclas de mover além do a,w,s,d
+//capturar as teclas de mover
 // fazer menu fixo na tela, com a opção de salvar, recomecar e abrir
 //colocar mais interaçoes do usuario, principalmente quando algo da errado
 //interface melhor
@@ -133,7 +133,7 @@ void add_random_number(Game *game) {
 }
 
 void print_board(const Game *game) {
-    system("clear"); //nao deixa os boards acumularem
+    system("clear || cls"); //nao deixa os boards acumularem
     printf("-----------------------------\n");
     for (int i = 0; i < tam; i++) {
         printf("|");
@@ -244,92 +244,114 @@ void move_board(Game *game, Direction dir) {
     int i, j, k;
     bool moved = false;
     backup(game);
-//PERCEBI QUE ELE MESCLA MAIS DE DOIS SE O BOARD FOR NA DIREÇAO DE OUTRO QUE A SOMA É IGUAL A ELE MAS FUNCIONA CORRETAMENTE NO CONTRARIO
+
     switch (dir) {
         case UP:
             for (j = 0; j < tam; j++) {
+                int move = 0;
+                bool merged[tam] = {false};  // Initialize all blocks as not merged
                 for (i = 1; i < tam; i++) {
                     if (game->board[i][j] != 0) {
                         k = i;
-                        while (k > 0 && game->board[k-1][j] == 0) {
-                            game->board[k-1][j] = game->board[k][j];
+                        while (k > move && game->board[k - 1][j] == 0) {
+                            game->board[k - 1][j] = game->board[k][j];
                             game->board[k][j] = 0;
                             k--;
-                            moved = 1;
-                        }
-                        if (k > 0 && game->board[k-1][j] == game->board[k][j]) {
-                            game->board[k-1][j] *= 2; // Soma os blocos
-                            game->score += game->board[k-1][j];  // Adiciona o valor da combinação à pontuação
-                            game->board[k][j] = 0; // Zera o bloco combinado
                             moved = true;
-                            //k--;
-                        } 
-
+                        }
+                        if (k > move && game->board[k - 1][j] == game->board[k][j] && !merged[k - 1] && !merged[k]) {
+                            game->board[k - 1][j] *= 2;
+                            game->score += game->board[k - 1][j];
+                            game->board[k][j] = 0;
+                            merged[k - 1] = true;
+                            moved = true;
+                            move = k - 1;
+                        } else {
+                            move = k;
+                        }
                     }
                 }
             }
             break;
+
         case DOWN:
             for (j = 0; j < tam; j++) {
+                int move = tam - 1;
+                bool merged[tam] = {false};  // Initialize all blocks as not merged
                 for (i = tam - 2; i >= 0; i--) {
                     if (game->board[i][j] != 0) {
                         k = i;
-                        while (k < tam - 1 && game->board[k+1][j] == 0) {
-                            game->board[k+1][j] = game->board[k][j];
+                        while (k < tam - 1 && game->board[k + 1][j] == 0) {
+                            game->board[k + 1][j] = game->board[k][j];
                             game->board[k][j] = 0;
                             k++;
-                            moved = 1;
-                        }
-                        if (k < tam - 1 && game->board[k+1][j] == game->board[k][j]) {
-                            game->board[k+1][j] *= 2;
-                            game->score += game->board[k+1][j];
-                            game->board[k][j] = 0;
                             moved = true;
-                            //k++;
+                        }
+                        if (k < tam - 1 && game->board[k + 1][j] == game->board[k][j] && !merged[k + 1] && !merged[k]) {
+                            game->board[k + 1][j] *= 2;
+                            game->score += game->board[k + 1][j];
+                            game->board[k][j] = 0;
+                            merged[k + 1] = true;
+                            moved = true;
+                            move = k + 1;
+                        } else {
+                            move = k;
                         }
                     }
                 }
             }
             break;
+
         case LEFT:
             for (i = 0; i < tam; i++) {
+                int move = 0;
+                bool merged[tam] = {false};  // Initialize all blocks as not merged
                 for (j = 1; j < tam; j++) {
                     if (game->board[i][j] != 0) {
                         k = j;
-                        while (k > 0 && game->board[i][k-1] == 0) {
-                            game->board[i][k-1] = game->board[i][k];
+                        while (k > move && game->board[i][k - 1] == 0) {
+                            game->board[i][k - 1] = game->board[i][k];
                             game->board[i][k] = 0;
                             k--;
-                            moved = 1;
-                        }
-                        if (k > 0 && game->board[i][k-1] == game->board[i][k]) {
-                            game->board[i][k-1] *= 2;
-                            game->score += game->board[i][k-1];
-                            game->board[i][k] = 0;
                             moved = true;
-                            //k++;
+                        }
+                        if (k > move && game->board[i][k - 1] == game->board[i][k] && !merged[k - 1] && !merged[k]) {
+                            game->board[i][k - 1] *= 2;
+                            game->score += game->board[i][k - 1];
+                            game->board[i][k] = 0;
+                            merged[k - 1] = true;
+                            moved = true;
+                            move = k - 1;
+                        } else {
+                            move = k;
                         }
                     }
                 }
             }
             break;
+
         case RIGHT:
             for (i = 0; i < tam; i++) {
+                int move = tam - 1;
+                bool merged[tam] = {false};  // Initialize all blocks as not merged
                 for (j = tam - 2; j >= 0; j--) {
                     if (game->board[i][j] != 0) {
                         k = j;
-                        while (k < tam - 1 && game->board[i][k+1] == 0) {
-                            game->board[i][k+1] = game->board[i][k];
+                        while (k < tam - 1 && game->board[i][k + 1] == 0) {
+                            game->board[i][k + 1] = game->board[i][k];
                             game->board[i][k] = 0;
                             k++;
-                            moved = 1;
-                        }
-                        if (k < tam - 1 && game->board[i][k+1] == game->board[i][k]) {
-                            game->board[i][k+1] *= 2;
-                            game->score += game->board[i][k+1];
-                            game->board[i][k] = 0;
                             moved = true;
-                            //k--;
+                        }
+                        if (k < tam - 1 && game->board[i][k + 1] == game->board[i][k] && !merged[k + 1] && !merged[k]) {
+                            game->board[i][k + 1] *= 2;
+                            game->score += game->board[i][k + 1];
+                            game->board[i][k] = 0;
+                            merged[k + 1] = true;
+                            moved = true;
+                            move = k + 1;
+                        } else {
+                            move = k;
                         }
                     }
                 }
@@ -341,11 +363,11 @@ void move_board(Game *game, Direction dir) {
         add_random_number(game);
         add_random_number(game);
         game->moves++;
-    }
-    else {
+    } else {
         printf("Movimento inválido!\n");
     }
 }
+
 
 bool check_win(const Game *game) {
     for (int i = 0; i < tam; i++) {
@@ -370,6 +392,8 @@ int can_move(const Game *game) {
             }
         }
     }
+    printf("Não há mais jogadas possíveis.");
+    menu();
     return 0; // não há mais jogadas possíveis
 }
 
@@ -391,6 +415,7 @@ int menu() {
 void clear_input_buffer() {
     while (getchar() != '\n');
 }
+
 
 int main() {
     srand(time(0));   
@@ -432,7 +457,7 @@ int main() {
 
             char escolha;
             do {
-                printf("Deseja continuar jogando? [J para continuar, K para encerrar]\n");
+                printf("Deseja continuar jogando? [J para continuar, K para encerrar\n");
                 scanf(" %c", &escolha);
 
                 if (escolha == 'J' || escolha == 'j') {
@@ -451,6 +476,7 @@ int main() {
                 printf("Fim de jogo!\n");
                 printf("Pontuação Máxima: %d\n", game.score);
                 game.game_over = true;
+                menu();
                 break; // Encerra o loop principal do jogo.
             }
         }
