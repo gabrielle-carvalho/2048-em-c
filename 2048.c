@@ -3,24 +3,18 @@
 #include <time.h>
 #include <string.h>
 #include <stdbool.h>
-#include <ncurses.h> //setas teclado
+#include <ncurses.h> //setas teclado 
 //capturar as teclas de mover além do a,w,s,d
-
 // fazer menu fixo na tela, com a opção de salvar, recomecar e abrir
-//pedir confirmaçao ao sair e ao salvar
-//nao printar um novo jogo a cada jogada
 //colocar mais interaçoes do usuario, principalmente quando algo da errado
+//interface melhor
 
-//interface melhor?
-
-// Opção de continuar depois de 2048?
-// set_difficulty(): Alterar a dificuldade (ex.: tempo de resposta ou número inicial de peças).
+//Alterar a dificuldade (ex.: tempo de resposta ou número inicial de peças).
 // Adicionar sistema de combos: Pontuação extra por combinações consecutivas.
 //SALVAR JOGO AUTOMATICAMENTE?
 
 #define WIN_SCORE 32
 #define tam 4
-char continuar_jogando;
 
 typedef enum {
     UP,
@@ -40,6 +34,7 @@ typedef struct {
     int backup_score; //restaura o score no undo
     int backup_moves; // restaura qtd de moves no undo
     int **backup_board; //recupera tabuleiro salvo
+    bool winscore_reached; // flag para verificar se winscore foi atingido
 } Game;
 
 void init_board(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(int new_value, Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), clear_input_buffer(); 
@@ -249,7 +244,7 @@ void move_board(Game *game, Direction dir) {
     int i, j, k;
     bool moved = false;
     backup(game);
-
+//PERCEBI QUE ELE MESCLA MAIS DE DOIS SE O BOARD FOR NA DIREÇAO DE OUTRO QUE A SOMA É IGUAL A ELE MAS FUNCIONA CORRETAMENTE NO CONTRARIO
     switch (dir) {
         case UP:
             for (j = 0; j < tam; j++) {
@@ -267,7 +262,7 @@ void move_board(Game *game, Direction dir) {
                             game->score += game->board[k-1][j];  // Adiciona o valor da combinação à pontuação
                             game->board[k][j] = 0; // Zera o bloco combinado
                             moved = true;
-                            k--;
+                            //k--;
                         } 
 
                     }
@@ -290,7 +285,7 @@ void move_board(Game *game, Direction dir) {
                             game->score += game->board[k+1][j];
                             game->board[k][j] = 0;
                             moved = true;
-                            k++;
+                            //k++;
                         }
                     }
                 }
@@ -312,7 +307,7 @@ void move_board(Game *game, Direction dir) {
                             game->score += game->board[i][k-1];
                             game->board[i][k] = 0;
                             moved = true;
-                            k++;
+                            //k++;
                         }
                     }
                 }
@@ -334,7 +329,7 @@ void move_board(Game *game, Direction dir) {
                             game->score += game->board[i][k+1];
                             game->board[i][k] = 0;
                             moved = true;
-                            k--;
+                            //k--;
                         }
                     }
                 }
@@ -378,13 +373,6 @@ int can_move(const Game *game) {
     return 0; // não há mais jogadas possíveis
 }
 
-// int keep_playing(const Game *game){
-//     if(continuar_jogando == true){
-//         return 1;
-//     }
-//     return 0;
-// }
-
 int menu() {
     int opcao;
     printf("Bem-vindo ao 2048!\n");
@@ -405,8 +393,9 @@ void clear_input_buffer() {
 }
 
 int main() {
-    srand(time(0));
+    srand(time(0));   
     Game game;
+    game.winscore_reached = false;
     int opcao;
     
     load_highscore(&game.highscore);   // Carrega o highscore antes de qualquer coisa
@@ -433,27 +422,38 @@ int main() {
             printf("Fim de jogo!\n");
             printf("Pontuação Máxima: %d\n", game.score);
             game.game_over = true;
-        }
-
-        if (check_win(&game)) {
-            printf("Você ganhou! Parabéns!\n");
-            printf("Pontuação Final: %d\n", game.score);
-            printf("Deseja continuar jogando? K para parar, J para continuar\n");
-            scanf(" %c ", &continuar_jogando);
-            if(continuar_jogando == 'J' || 'j'){
-                game.game_over = false;
-            }
-            else if(continuar_jogando == 'K' || 'k'){
-                printf("Jogo finalizado.");
-                scanf("%c", &continuar_jogando);
-            }  //MUDAR ESTADO DO JOGO DE VERDADE
-            else{
-                game.game_over = false;
-            }
-
             break;
         }
 
+        if (check_win(&game)&& !game.winscore_reached) {
+            game.winscore_reached = true;
+            printf("Você ganhou! Parabéns!\n");
+            printf("Pontuação Final: %d\n", game.score);
+
+            char escolha;
+            do {
+                printf("Deseja continuar jogando? [J para continuar, K para encerrar]\n");
+                scanf(" %c", &escolha);
+
+                if (escolha == 'J' || escolha == 'j') {
+                    printf("Continuando o jogo!\n");
+                    break; // Sai do loop, jogo continua.
+                } else if (escolha == 'K' || escolha == 'k') {
+                    printf("Jogo finalizado. Obrigado por jogar!\n");
+                    game.game_over = true; // Finaliza o jogo.
+                    break;
+                } else {
+                    printf("Entrada inválida. Tente novamente.\n");
+                }
+            } while (true);
+
+            if (game.game_over) {
+                printf("Fim de jogo!\n");
+                printf("Pontuação Máxima: %d\n", game.score);
+                game.game_over = true;
+                break; // Encerra o loop principal do jogo.
+            }
+        }
 
         printf("Pressione 'b' para salvar, z para desfazer jogada o jogo ou W, A, S, D para mover: ");
         
