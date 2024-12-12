@@ -2,66 +2,42 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include <stdbool.h>
-#include <ncurses.h> //setas teclado 
+#include "game.h"
 
-#define WIN_SCORE 2048
-#define tam 4
-
-typedef enum {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT
-} Direction;
-
-typedef struct {
-    int **board;
-    int **prev_board; //retaura estado do tabuleiro no undo
-    int score;
-    int highscore;
-    int moves;
-    bool game_over;
-    bool backup_saved;  // Flag para verificar se o jogo foi salvo
-    int backup_score; //restaura o score no undo
-    int backup_moves; // restaura qtd de moves no undo
-    int **backup_board; //recupera tabuleiro salvo
-    bool winscore_reached; // flag para verificar se winscore foi atingido
-} Game;
-
-void init_board(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(int new_value, Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), clear_input_buffer(); 
-int can_move(const Game *game), menu(Game *game);
-bool check_win(const Game *game), check_full(const Game *game);
-
+// Inicializa o tabuleiro com valores iniciais e aloca memória dinamicamente
 void init_board(Game *game) {
-//aloca o array
-    game->board = (int **) malloc(tam * sizeof(int *));
-    game->prev_board = (int **) malloc(tam * sizeof(int *));
-    game->backup_board = malloc(tam * sizeof(int *));
+    // Alocação de memória para o tabuleiro e backups
+    game->board = (int **)malloc(BOARD_SIZE * sizeof(int *));
+    game->prev_board = (int **)malloc(BOARD_SIZE * sizeof(int *));
+    game->backup_board = (int **)malloc(BOARD_SIZE * sizeof(int *));
     if (!game->board || !game->prev_board || !game->backup_board) {
         perror("Falha na alocação de memória.");
-        return;
+        exit(1); // Encerra o programa em caso de falha
     }
-//aloca cada posição do array
-    for (int i = 0; i < tam; i++) {
-        game->board[i] = (int *) malloc(tam * sizeof(int));
-        game->prev_board[i] = (int *) malloc(tam * sizeof(int));
-        game->backup_board[i] = malloc(tam * sizeof(int));
+
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        game->board[i] = (int *)malloc(BOARD_SIZE * sizeof(int));
+        game->prev_board[i] = (int *)malloc(BOARD_SIZE * sizeof(int));
+        game->backup_board[i] = (int *)malloc(BOARD_SIZE * sizeof(int));
         if (!game->board[i] || !game->prev_board[i] || !game->backup_board[i]) {
             perror("Falha na alocação de memória para uma linha.");
-            return;
+            exit(1);
         }
+        memset(game->board[i], 0, BOARD_SIZE * sizeof(int)); // Inicializa com 0
     }
+
     game->score = 0;
     game->moves = 0;
     game->game_over = false;
     game->backup_saved = false;
+    game->winscore_reached = false;
     add_random_number(game);
     add_random_number(game);
 }
 
-void free_game(Game *game) { //quando chamado libera a memoria das alocações feitas dinamicamente
-    for (int i = 0; i < tam; i++) {
+// Libera a memória alocada para o jogo
+void free_game(Game *game) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
         free(game->board[i]);
         free(game->prev_board[i]);
         free(game->backup_board[i]);
@@ -71,34 +47,36 @@ void free_game(Game *game) { //quando chamado libera a memoria das alocações f
     free(game->backup_board);
 }
 
+// Realiza o backup do estado atual do jogo
 void backup(Game *game) {
-    for (int i = 0; i < tam; i++) { //copia o que esta no board no momento para o backup, caso queira fazer o undo
-        memcpy(game->backup_board[i], game->board[i], tam * sizeof(int));
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        memcpy(game->backup_board[i], game->board[i], BOARD_SIZE * sizeof(int));
     }
-    game->backup_score = game->score; //salva o score do momento para recuperar caso undo
-    game->backup_moves = game->moves; // salva a quantidade de movimentos para cajo a jogada seja desfeita
-    game->backup_saved = true; //diz que o jogo ja foi salvo
+    game->backup_score = game->score;
+    game->backup_moves = game->moves;
+    game->backup_saved = true;
 }
 
+// Desfaz a última jogada (undo)
 void undo_move(Game *game) {
     if (!game->backup_saved) {
-        printf("Nenhuma jogada para desfazer!\n"); //retorna isso caso o usuario tente fazer mais que um undo
+        printf("Nenhuma jogada para desfazer!\n");
         return;
     }
-    game->score = game->backup_score; //restaura o score
-    game->moves = game->backup_moves; // Restaurar o número de movimentos
-
-    for (int i = 0; i < tam; i++) {
-        memcpy(game->board[i], game->backup_board[i], tam * sizeof(int));// Restaura o estado do jogo a partir do backup
+    game->score = game->backup_score;
+    game->moves = game->backup_moves;
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        memcpy(game->board[i], game->backup_board[i], BOARD_SIZE * sizeof(int));
     }
-    game->backup_saved = false;  // Resetar o estado de backup
+    game->backup_saved = false;
     printf("Última jogada desfeita.\n");
 }
 
+// Verifica se o tabuleiro está cheio
 bool check_full(const Game *game) {
-    for (int i = 0; i < tam; i++) {
-        for (int j = 0; j < tam; j++) {
-            if (game->board[i][j] == 0) { //percorre todo array e ao encontrar espaco livre retorna 0
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (game->board[i][j] == 0) {
                 return false;
             }
         }
@@ -106,59 +84,62 @@ bool check_full(const Game *game) {
     return true;
 }
 
+// Adiciona um número aleatório (2 ou 4) em uma posição vazia do tabuleiro
 void add_random_number(Game *game) {
     if (check_full(game)) {
-        return; // Não há espaço para adicionar um novo número
+        return;
     }
     int i, j;
     do {
-        i = rand() % tam;
-        j = rand() % tam;
+        i = rand() % BOARD_SIZE;
+        j = rand() % BOARD_SIZE;
     } while (game->board[i][j] != 0);
 
     game->board[i][j] = (rand() % 10 < 6) ? 2 : 4;
-    //MUDAR JEITO DE CRIAR NUMEROS ALEATORIOS?
 }
 
-void print_board(const Game *game) { //print o jogo em si na tela
-    system("clear || cls"); //nao deixa os boards acumularem
+// Imprime o tabuleiro no console
+void print_board(const Game *game) {
+    system("clear || cls");
     printf("-----------------------------\n");
-    for (int i = 0; i < tam; i++) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
         printf("|");
-        for (int j = 0; j < tam; j++) {
-            if(game->board[i][j] == 0){ // se o valor for 0 ele deixa vazio
+        for (int j = 0; j < BOARD_SIZE; j++) {
+            if (game->board[i][j] == 0) {
                 printf("      |");
-            }
-            else{
+            } else {
                 printf(" %4d |", game->board[i][j]);
             }
         }
         printf("\n");
-        printf("-----------------------------\n");    
+        printf("-----------------------------\n");
     }
     printf("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
 }
 
+// Salva o estado do jogo em um arquivo
 void save_game(Game *game, const char *filename) {
-    FILE *file = fopen(filename, "wb"); //write binary
-    if(file == NULL){
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
         perror("Erro ao salvar o jogo");
         return;
     }
 
     fwrite(&game->score, sizeof(int), 1, file);
     fwrite(&game->highscore, sizeof(int), 1, file);
-    fwrite(&game->moves, sizeof(int), 1, file);  
+    fwrite(&game->moves, sizeof(int), 1, file);
 
-    for(int i=0; i<tam; i++){
-        fwrite(game->board[i], sizeof(int), tam, file);
-        fwrite(game->prev_board[i], sizeof(int), tam, file);
-        fwrite(game->backup_board[i], sizeof(int), tam, file);
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        fwrite(game->board[i], sizeof(int), BOARD_SIZE, file);
+        fwrite(game->prev_board[i], sizeof(int), BOARD_SIZE, file);
+        fwrite(game->backup_board[i], sizeof(int), BOARD_SIZE, file);
     }
+
     fclose(file);
-    printf("Jogo salvo em: %s", filename);
+    printf("Jogo salvo em: %s\n", filename);
 }
 
+// Carrega o estado do jogo de um arquivo
 void load_game(Game *game, const char *filename) {
     FILE *file = fopen(filename, "rb"); //read binario
     if (file == NULL) {
@@ -225,7 +206,6 @@ void load_highscore(int *highscore) { //atribui o conteudo de file a variavel hi
     fscanf(file, "%d", highscore);
     fclose(file);
 }
-
 void move_board(Game *game, Direction dir) {
     int i, j, k;
     bool moved = false;
@@ -352,160 +332,4 @@ void move_board(Game *game, Direction dir) {
     } else {
         printf("Movimento inválido!\n");
     }
-}
-
-bool check_win(const Game *game) { //percorre o array e se o winscore estiver em alguma posicao ele retorna true
-    for (int i = 0; i < tam; i++) {
-        for (int j = 0; j < tam; j++) {
-            if (game->board[i][j] == WIN_SCORE) {
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
-
-int can_move(const Game *game) { 
-    if (!check_full(game)) {
-        return 1; //se nao estiver cheio continua o jogo
-    }
-    for (int i = 0; i < tam; i++) {
-        for (int j = 0; j < tam; j++) { //se tiver cheio mas existem cominaçoes possiveis, continua
-            if ((i + 1 < tam && game->board[i][j] == game->board[i+1][j]) ||
-                (j + 1 < tam && game->board[i][j] == game->board[i][j+1])) {
-                return 1;
-            }
-        }
-    }
-    printf("Não há mais jogadas possíveis.");
-    menu(game);
-    return 0; // não há mais jogadas possíveis
-}
-
-int menu(Game *game) {
-    int opcao;
-    printf("Bem-vindo ao 2048!\n");
-    printf("1. Novo Jogo\n");
-    printf("2. Carregar Jogo\n");
-    printf("3. Sair\n");
-    printf("Escolha uma opção: ");
-    
-    while (scanf("%d", &opcao) != 1 || opcao < 1 || opcao > 3) {
-        clear_input_buffer();
-        printf("Opção inválida! Escolha 1, 2 ou 3: ");
-    }
-    switch(opcao) {
-    case 1:
-        init_board(&game);
-        break;
-    case 2:
-        load_game(&game, "savegame.txt");
-        break;
-    case 3:
-        printf("Saindo...\n");
-        return 0;
-    default:
-        break;
-}
-}
-
-void clear_input_buffer() {
-    while (getchar() != '\n');
-}
-
-int main() {
-    srand(time(0));   // inicializa o gerador de números pseudo-aleatórios
-    Game game;
-    game.winscore_reached = false; //confere se o valor da pontuação maximo foi atingido
-
-    load_highscore(&game.highscore);   // Carrega o highscore antes de qualquer coisa
-    
-    while (1) {
-        print_board(&game);
-
-        if (can_move(&game) == 0) {
-            printf("Fim de jogo!\n");
-            printf("Pontuação Máxima: %d\n", game.score);
-            game.game_over = true;
-            break;
-        }
-
-        if (check_win(&game)&& !game.winscore_reached) {
-            game.winscore_reached = true;
-            printf("Você ganhou! Parabéns!\n");
-            printf("Pontuação Final: %d\n", game.score);
-
-            char escolha;
-            do {
-                printf("Deseja continuar jogando? J para continuar, K para encerrar\n");
-                scanf(" %c", &escolha);
-                if (escolha == 'J' || escolha == 'j') {
-                    printf("Continuando o jogo!\n");
-                    break; // Sai do loop, jogo continua.
-                } else if (escolha == 'K' || escolha == 'k') {
-                    printf("Jogo finalizado. Obrigado por jogar!\n");
-                    game.game_over = true; // Finaliza o jogo.
-                    break;
-                } else {
-                    printf("Entrada inválida. Tente novamente.\n");
-                }
-            } while (true);
-
-            if (game.game_over) {
-                printf("Fim de jogo!\n");
-                printf("Pontuação Máxima: %d\n", game.score);
-                game.game_over = true;
-                menu(game);
-                break; // Encerra o loop principal do jogo.
-            }
-        }
-
-        printf("Pressione 'b' para salvar, z para desfazer jogada o jogo ou W, A, S, D para mover: ");
-        
-        char move;
-        scanf(" %c", &move);
-
-        int game_saved=0;
-
-        if (move == 'b' || move == 'B') {
-            if(!game_saved){
-                save_game(&game, "savegame.txt");
-                printf("Jogo salvo com sucesso!\n");
-                printf("\n");
-                game_saved=1;
-            }
-            continue;  // Pula a parte de movimento e continua o jogo
-        }
-        if (move == 'z' || move == 'Z') {
-            undo_move(&game);  // Desfaz a última jogada
-            continue;   // Pula a parte de movimento e continua o jogo
-        }
-
-        Direction dir;
-        switch (move) {
-            case 'w': 
-                move_board(&game, UP);
-                break;
-            case 's': 
-                move_board(&game, DOWN);
-                break;
-            case 'a': 
-                move_board(&game, LEFT);
-                break;
-            case 'd': 
-                move_board(&game, RIGHT);
-                break;
-            case 'z':
-                backup(&game);
-                break;
-            default:
-                printf("\nEntrada inválida! Use W, A, S, D. Ou Z para desfazer\n");
-                continue;
-        }    
-        update_score(game.score, &game);// Atualiza o score e o highscore
-    }
-    save_game(&game, "savegame.txt");// Salva o jogo ao final
-    save_highscore(&game); // Salva o highscore atualizado
-    free_game(&game); //libera a memoria
-    return 0;
 }
