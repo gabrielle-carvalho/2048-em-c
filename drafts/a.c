@@ -121,22 +121,22 @@ void add_random_number(Game *game) {
 }
 
 void print_board(const Game *game) {
-    system("clear || cls"); //nao deixa os boards acumularem
-    printf("-----------------------------\n");
+    clear(); // limpa a tela antes de exibir o novo tabuleiro
+    printw("-----------------------------\n");
     for (int i = 0; i < tam; i++) {
-        printf("|");
+        printw("|");
         for (int j = 0; j < tam; j++) {
-            if(game->board[i][j] == 0){
-                printf("      |");
-            }
-            else{
-                printf(" %4d |", game->board[i][j]);
+            if (game->board[i][j] == 0) {
+                printw("      |");
+            } else {
+                printw(" %4d |", game->board[i][j]);
             }
         }
-        printf("\n");
-        printf("-----------------------------\n");    
+        printw("\n");
+        printw("-----------------------------\n");
     }
-    printf("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+    printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+    refresh(); // atualiza a tela
 }
 
 void save_game(Game *game, const char *filename) {
@@ -371,7 +371,6 @@ void move_board(Game *game, Direction dir) {
 
     if (moved) {
         add_random_number(game);
-        add_random_number(game);
         game->moves++;
     } else {
         printf("Movimento inválido!\n");
@@ -410,20 +409,70 @@ int can_move(const Game *game) {
     return 0; // não há mais jogadas possíveis
 }
 
-int menu() {
-    int opcao;
-    printf("Bem-vindo ao 2048!\n");
-    printf("1. Novo Jogo\n");
-    printf("2. Carregar Jogo\n");
-    printf("3. Sair\n");
-    printf("Escolha uma opção: ");
-    
-    while (scanf("%d", &opcao) != 1 || opcao < 1 || opcao > 3) {
-        clear_input_buffer();
-        printf("Opção inválida! Escolha 1, 2 ou 3: ");
+void handle_input(Game *game) {
+    int ch = getch(); // Obtém a tecla pressionada
+    switch (ch) {
+        case KEY_UP:
+            move_board(game, UP);
+            break;
+        case KEY_DOWN:
+            move_board(game, DOWN);
+            break;
+        case KEY_LEFT:
+            move_board(game, LEFT);
+            break;
+        case KEY_RIGHT:
+            move_board(game, RIGHT);
+            break;
+        case 'q':
+        case 'Q':
+            game->game_over = true; // Finaliza o jogo se 'q' for pressionado
+            break;
     }
-    return opcao;
 }
+
+int menu() {
+    int choice = 0;
+    int highlight = 0;
+    const char *options[] = {"Iniciar Novo Jogo", "Carregar Jogo", "Sair"};
+    int num_options = sizeof(options) / sizeof(options[0]);
+
+    initscr();            // Inicializa o ncurses
+    cbreak();             // Desativa o buffer de linha
+    noecho();             // Desativa a exibição dos caracteres digitados
+    keypad(stdscr, TRUE); // Habilita a captura das teclas de setas
+
+    while (1) {
+        clear(); // Limpa a tela a cada loop
+
+        // Exibe as opções do menu
+        for (int i = 0; i < num_options; i++) {
+            if (i == highlight) {
+                attron(A_REVERSE); // Destaca a opção selecionada
+                printw("%s\n", options[i]);
+                attroff(A_REVERSE); // Remove o destaque
+            } else {
+                printw("%s\n", options[i]);
+            }
+        }
+        refresh(); // Atualiza a tela
+
+        // Espera pela entrada do usuário
+        int ch = getch();
+        switch (ch) {
+            case KEY_UP:
+                highlight = (highlight == 0) ? num_options - 1 : highlight - 1;
+                break;
+            case KEY_DOWN:
+                highlight = (highlight == num_options - 1) ? 0 : highlight + 1;
+                break;
+            case 10: // Enter
+                endwin(); // Finaliza o ncurses
+                return highlight; // Retorna a opção escolhida
+        }
+    }
+}
+
 
 void clear_input_buffer() {
     while (getchar() != '\n');  // Limpa até a próxima linha
@@ -514,39 +563,44 @@ void loop_jogo(Game *game) {
 }
 
 int main() {
-    srand(time(0));   
+    int choice = menu();
     Game game;
-    game.winscore_reached = false;
-    int opcao;
+    switch (choice) {
+        case 0:
+            init_board(&game);
+            load_highscore(&game.highscore);
 
-    load_highscore(&game.highscore);  // Carrega o highscore antes de qualquer coisa
-
-    while (1) {
-        opcao = menu();
-        switch (opcao) {
-            case 1:
-                init_board(&game);
-                game.game_over = false;
-                loop_jogo(&game);
-                break;
-            case 2:
-                load_game(&game, "savegame.txt");
-                game.game_over = false;
-                loop_jogo(&game);
-                break;
-            case 3:
-                printf("Saindo...\n");
-                return 0;
-            default:
-                break;
-        }
+            while (!game.game_over) {
+                print_board(&game);
+                handle_input(&game);
+                //usleep(100000); // Tempo de espera para reduzir a taxa de atualização
+            }
+            break;
+    // while (1) {
+    //     opcao = menu();
+    //     switch (opcao) {
+    //         case 1:
+    //             init_board(&game);
+    //             game.game_over = false;
+    //             loop_jogo(&game);
+    //             break;
+        case 2:
+            load_game(&game, "savegame.txt");
+            game.game_over = false;
+            loop_jogo(&game);
+            break;
+        case 3:
+            printf("Saindo...\n");
+            return 0;
+        default:
+            break;
+    }
 
         // Quando o jogo terminar, volta para o menu
         printf("\nFim do Jogo!\n");
         save_game(&game, "savegame.txt"); // Salva o jogo ao final
         save_highscore(&game); // Salva o highscore atualizado
         free_game(&game); // Libera a memória
-    }
 
     return 0;
 }
