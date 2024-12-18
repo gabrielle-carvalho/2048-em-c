@@ -29,12 +29,11 @@ typedef struct {
     bool winscore_reached; // flag para verificar se winscore foi atingido
 } Game;
 
-void init_board(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(int new_value, Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), clear_input_buffer(); 
+void init_board(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(int new_value, Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), print_fixed_menu();
 int can_move(const Game *game), menu();
-bool check_win(const Game *game), check_full(const Game *game);
+bool check_win(Game *game), check_full(const Game *game);
 
 void init_board(Game *game) {
-
     game->board = (int **) calloc(tam, sizeof(int *));
     game->prev_board = (int **) calloc(tam, sizeof(int *));
     game->backup_board = (int **) malloc(tam * sizeof(int *));
@@ -122,6 +121,7 @@ void add_random_number(Game *game) {
 
 void print_board(const Game *game) {
     clear(); // limpa a tela antes de exibir o novo tabuleiro
+    print_fixed_menu();  // Exibe o menu fixo sempre no topo
     printw("-----------------------------\n");
     for (int i = 0; i < tam; i++) {
         printw("|");
@@ -137,6 +137,11 @@ void print_board(const Game *game) {
     }
     printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
     refresh(); // atualiza a tela
+}
+
+void print_fixed_menu() {
+    printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
+    printw("[Z] Undo | [B] Save | [Q] Quit | [H] Help\n");
 }
 
 void save_game(Game *game, const char *filename) {
@@ -245,8 +250,8 @@ void load_highscore(int *highscore) {
     if (file) {
         fread(highscore, sizeof(int), 1, file);
         fclose(file);
-    } else {
-        *highscore = 0;
+    // } else {
+    //     *highscore = 0;
     }
 }
 
@@ -377,15 +382,16 @@ void move_board(Game *game, Direction dir) {
     }
 }
 
-bool check_win(const Game *game) {
+bool check_win(Game *game) {
     for (int i = 0; i < tam; i++) {
         for (int j = 0; j < tam; j++) {
             if (game->board[i][j] == WIN_SCORE) {
-                return 1;
+                game->winscore_reached = true;
+                return true;
             }
         }
     }
-    return 0;
+    return false;
 }
 
 int can_move(const Game *game) { 
@@ -405,202 +411,74 @@ int can_move(const Game *game) {
         }
     }
     printf("Não há mais jogadas possíveis.");
-    //menu();
     return 0; // não há mais jogadas possíveis
 }
 
 void handle_input(Game *game) {
     int ch = getch(); // Obtém a tecla pressionada
     switch (ch) {
-        case KEY_UP:
+        case KEY_UP:    // Setas
+        case 'w':       // Move para cima
             move_board(game, UP);
             break;
         case KEY_DOWN:
+        case 's':       // Move para baixo
             move_board(game, DOWN);
             break;
         case KEY_LEFT:
+        case 'a':       // Move para esquerda
             move_board(game, LEFT);
             break;
         case KEY_RIGHT:
+        case 'd':       // Move para direita
             move_board(game, RIGHT);
             break;
-        case 'q':
-        case 'Q':
-            game->game_over = true; // Finaliza o jogo se 'q' for pressionado
+        case 'z':       // Undo
+            undo_move(game);
             break;
+        case 'b':       // Salvar
+            save_game(game, "game_save.dat");
+            break;
+        case 'q':       // Sair
+            game->game_over = true;
+            break;
+        case 'k':
+            game->game_over = true;  // Finaliza o jogo
+            break;
+        case 'j':
+            
     }
-}
-
-int menu() {
-    int choice = 0;
-    int highlight = 0;
-    const char *options[] = {"Iniciar Novo Jogo", "Carregar Jogo", "Sair"};
-    int num_options = sizeof(options) / sizeof(options[0]);
-
-    initscr();            // Inicializa o ncurses
-    cbreak();             // Desativa o buffer de linha
-    noecho();             // Desativa a exibição dos caracteres digitados
-    keypad(stdscr, TRUE); // Habilita a captura das teclas de setas
-
-    while (1) {
-        clear(); // Limpa a tela a cada loop
-
-        // Exibe as opções do menu
-        for (int i = 0; i < num_options; i++) {
-            if (i == highlight) {
-                attron(A_REVERSE); // Destaca a opção selecionada
-                printw("%s\n", options[i]);
-                attroff(A_REVERSE); // Remove o destaque
-            } else {
-                printw("%s\n", options[i]);
-            }
-        }
-        refresh(); // Atualiza a tela
-
-        // Espera pela entrada do usuário
-        int ch = getch();
-        switch (ch) {
-            case KEY_UP:
-                highlight = (highlight == 0) ? num_options - 1 : highlight - 1;
-                break;
-            case KEY_DOWN:
-                highlight = (highlight == num_options - 1) ? 0 : highlight + 1;
-                break;
-            case 10: // Enter
-                endwin(); // Finaliza o ncurses
-                return highlight; // Retorna a opção escolhida
-        }
-    }
-}
-
-
-void clear_input_buffer() {
-    while (getchar() != '\n');  // Limpa até a próxima linha
 }
 
 void loop_jogo(Game *game) {
     while (1) {
         print_board(game);
-        
-        if (can_move(game) == 0) {
-            printf("Fim de jogo!\n");
-            printf("Pontuação Máxima: %d\n", game->score);
-            game->game_over = true;
+        handle_input(game);
+        if (check_win(game)) {
+            printw("Você venceu! Pressione qualquer tecla para continuar.\n");
+            getch();
             break;
         }
-
-        if (check_win(game) && !game->winscore_reached) {
-            game->winscore_reached = true;
-            printf("Você ganhou! Parabéns!\n");
-            printf("Pontuação Final: %d\n", game->score);
-
-            char escolha;
-            do {
-                printf("Deseja continuar jogando? [J para continuar, K para encerrar]\n");
-                scanf(" %c", &escolha);
-
-                if (escolha == 'J' || escolha == 'j') {
-                    printf("Continuando o jogo!\n");
-                    break; // Sai do loop, jogo continua.
-                } else if (escolha == 'K' || escolha == 'k') {
-                    printf("Jogo finalizado. Obrigado por jogar!\n");
-                    game->game_over = true; // Finaliza o jogo.
-                    break;
-                } else {
-                    printf("Entrada inválida. Tente novamente.\n");
-                }
-            } while (true);
-
-            if (game->game_over) {
-                printf("Fim de jogo!\n");
-                printf("Pontuação Máxima: %d\n", game->score);
-                game->game_over = true;
-                break; // Encerra o loop principal do jogo.
-            }
-        }
-
-        printf("Pressione 'b' para salvar, z para desfazer jogada ou W, A, S, D para mover: ");
-        
-        char move;
-        scanf(" %c", &move);
-
-        int game_saved = 0;
-
-        if (move == 'b' || move == 'B') {
-            if (!game_saved) {
-                save_game(game, "savegame.txt");
-                printf("Jogo salvo com sucesso!\n");
-                printf("\n");
-                game_saved = 1;
-            }
-            continue;  // Pula a parte de movimento e continua o jogo
-        }
-        if (move == 'z' || move == 'Z') {
-            undo_move(game);  // Desfaz a última jogada
-            continue;   // Pula a parte de movimento e continua o jogo
-        }
-
-        Direction dir;
-        switch (move) {
-            case 'w': 
-                move_board(game, UP);
-                break;
-            case 's': 
-                move_board(game, DOWN);
-                break;
-            case 'a': 
-                move_board(game, LEFT);
-                break;
-            case 'd': 
-                move_board(game, RIGHT);
-                break;
-            default:
-                printf("\nEntrada inválida! Use W, A, S, D.\n");
-                continue;
-        }
-        update_score(game->score, game); // Atualiza o score e o highscore
     }
 }
 
 int main() {
-    int choice = menu();
+    srand(time(NULL));
+
     Game game;
-    switch (choice) {
-        case 0:
-            init_board(&game);
-            load_highscore(&game.highscore);
+    init_board(&game);
+    load_highscore(&game.highscore);
 
-            while (!game.game_over) {
-                print_board(&game);
-                handle_input(&game);
-                //usleep(100000); // Tempo de espera para reduzir a taxa de atualização
-            }
-            break;
-    // while (1) {
-    //     opcao = menu();
-    //     switch (opcao) {
-    //         case 1:
-    //             init_board(&game);
-    //             game.game_over = false;
-    //             loop_jogo(&game);
-    //             break;
-        case 2:
-            load_game(&game, "savegame.txt");
-            game.game_over = false;
-            loop_jogo(&game);
-            break;
-        case 3:
-            printf("Saindo...\n");
-            return 0;
-        default:
-            break;
-    }
+    initscr();
+    raw();
+    keypad(stdscr, TRUE);
+    noecho();
+    
+    loop_jogo(&game);
 
-        // Quando o jogo terminar, volta para o menu
-        printf("\nFim do Jogo!\n");
-        save_game(&game, "savegame.txt"); // Salva o jogo ao final
-        save_highscore(&game); // Salva o highscore atualizado
-        free_game(&game); // Libera a memória
+    free_game(&game);
 
+    endwin();
     return 0;
 }
+
