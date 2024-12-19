@@ -30,7 +30,7 @@ typedef struct {
     bool winscore_reached; // flag para verificar se winscore foi atingido
 } Game;
 
-void init_board(Game *game), loop_jogo(Game *game) , quit_game(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), print_fixed_menu();
+void init_board(Game *game), init_colors(), loop_jogo(Game *game) , quit_game(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), print_fixed_menu();
 int menu();
 bool check_win(Game *game), check_full(const Game *game), can_move(const Game *game);;
 
@@ -104,7 +104,7 @@ bool check_full(const Game *game) {
             }
         }
     }
-    return true;
+    return !can_move(game);
 }
 
 void add_random_number(Game *game) {
@@ -121,25 +121,88 @@ void add_random_number(Game *game) {
     game->board[i][j] = (rand() % 10 < 6) ? 2 : 4;
 }
 
+void init_colors() {
+    if (has_colors()) {
+        start_color();   // Inicia o suporte a cores
+
+        // Definir tons de cores diferentes (incluindo roxos, rosinha, verde claro e amarelo)
+        init_color(COLOR_RED, 800, 0, 0);        // Vermelho suave
+        init_color(COLOR_GREEN, 0, 800, 0);      // Verde suave
+        init_color(COLOR_BLUE, 0, 0, 800);       // Azul suave
+        init_color(COLOR_YELLOW, 800, 800, 0);   // Amarelo suave
+        init_color(COLOR_CYAN, 0, 800, 800);     // Ciano suave
+        init_color(COLOR_MAGENTA, 800, 0, 800);  // Magenta suave
+        init_color(COLOR_WHITE, 800, 800, 800);  // Branco suave
+
+        // Novos tons para números maiores, incluindo roxos, rosinha, verde claro e amarelo
+        init_color(10, 600, 300, 800);           // Roxo suave
+        init_color(11, 1000, 600, 1000);         // Roxo claro
+        init_color(12, 1000, 800, 100);          // Rosinha suave
+        init_color(13, 300, 1000, 300);          // Verde claro
+        init_color(14, 1000, 1000, 0);           // Amarelo forte (adicionado)
+
+        // Definir os pares de cores para cada número
+        init_pair(1, COLOR_BLACK, COLOR_WHITE);        // Para células vazias
+        init_pair(2, COLOR_BLACK, COLOR_CYAN);         // Para o número 2 (Ciano suave)
+        init_pair(3, COLOR_BLACK, COLOR_GREEN);        // Para o número 4 (Verde suave)
+        init_pair(4, COLOR_BLACK, COLOR_YELLOW);       // Para o número 8 (Amarelo suave)
+        init_pair(5, COLOR_BLACK, COLOR_BLUE);         // Para o número 16 (Azul suave)
+        init_pair(6, COLOR_BLACK, COLOR_MAGENTA);      // Para o número 32 (Magenta suave)
+        init_pair(7, COLOR_BLACK, COLOR_RED);          // Para o número 64 (Vermelho suave)
+        init_pair(8, COLOR_BLACK, 10);                 // Para o número 128 (Roxo suave)
+        init_pair(9, COLOR_BLACK, 14);                // Para o número 8192 (Amarelo forte)
+        init_pair(10, COLOR_BLACK, 11);                // Para o número 512 (Roxo claro)
+        init_pair(11, COLOR_BLACK, 12);                // Para o número 1024 (Rosinha suave)
+        init_pair(12, COLOR_BLACK, COLOR_GREEN);       // Para o número 2048 (Verde suave claro)
+        init_pair(13, COLOR_BLACK, 13);                // Para o número 4096 (Verde claro)
+        //init_pair(14, COLOR_BLACK, 14);                // Para o número 8192 (Amarelo forte)
+    }
+}
+
 void print_board(const Game *game) {
     clear(); // limpa a tela antes de exibir o novo tabuleiro
     print_fixed_menu();  // Exibe o menu fixo sempre no topo
     printw("-----------------------------\n");
+
     for (int i = 0; i < tam; i++) {
         printw("|");
         for (int j = 0; j < tam; j++) {
-            if (game->board[i][j] == 0) {
+            int num = game->board[i][j];
+            if (num == 0) {
+                attron(COLOR_PAIR(1)); // Célula vazia
                 printw("      |");
+                attroff(COLOR_PAIR(1));
             } else {
-                printw(" %4d |", game->board[i][j]);
+                int color_pair = 2; // Cor padrão para 2
+                // Atribuindo cores específicas para cada número
+                if (num == 4) color_pair = 3;
+                else if (num == 8) color_pair = 4;
+                else if (num == 16) color_pair = 5;
+                else if (num == 32) color_pair = 6;
+                else if (num == 64) color_pair = 7;
+                else if (num == 128) color_pair = 8;
+                else if (num == 256) color_pair = 9;
+                else if (num == 512) color_pair = 10;
+                else if (num == 1024) color_pair = 11;
+                else if (num == 2048) color_pair = 12;
+                else if (num == 4096) color_pair = 13;
+                else if (num == 8192) color_pair = 14;
+
+                attron(COLOR_PAIR(color_pair));
+                printw(" %4d |", num);
+                attroff(COLOR_PAIR(color_pair));
             }
         }
         printw("\n");
         printw("-----------------------------\n");
     }
-    printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+
+    // Exibindo a pontuação, se necessário:
+    // printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+
     refresh(); // atualiza a tela
 }
+
 
 void print_fixed_menu() {
     printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
@@ -388,13 +451,18 @@ void move_board(Game *game, Direction dir) {
 
     if (moved) {
         add_random_number(game); // Só adiciona um número aleatório se houve movimento
+        game->moves++;
+    }
+    else{
+        printw("Movimento invalido");
     }
 }
 
 
 void quit_game(Game *game) {
     print_board(game);  // Exibe o estado final do tabuleiro
-    printw("\nJogo encerrado. Pressione qualquer tecla para sair...\n");
+    //sleep(1000);
+    printw("\nJogo encerrado. Pressione q para sair...\n");
     refresh();  // Atualiza a tela para garantir que o texto apareça
     getch();    // Aguarda o usuário pressionar uma tecla
     free_game(game); // Libera a memória alocada para o jogo
@@ -474,9 +542,9 @@ bool can_move(const Game *game) {
 }
 
 void handle_input(Game *game) {
-    if (game->game_over) {
-        return; // Não processa mais entradas se o jogo acabou
-    }
+    // if (game->game_over) {
+    //     return; // Não processa mais entradas se o jogo acabou
+    // }
 
     int ch = getch(); // Obtém a tecla pressionada
     switch (ch) {
@@ -531,12 +599,25 @@ void handle_game_over(Game *game) {
 
 void loop_jogo(Game *game) {
     while (!game->game_over) {
+        // Limpa a tela antes de desenhar o novo estado
+        clear();  // Limpa a tela
+        printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
+        printw("[Z] Undo | [B] Save | [Q] Quit | [H] Help\n");
+
+        // Exibe o tabuleiro atualizado
         print_board(game);
 
+        // Exibe a pontuação, highscore e número de movimentos
+        printw("\nScore: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+        
+        refresh();  // Atualiza a tela após exibir as informações
+
+        // Verifica se o jogador atingiu a pontuação de vitória
         if (game->winscore_reached) {
             printw("Parabéns! Você atingiu a pontuação de vitória (%d)!\n", WIN_SCORE);
             printw("Pressione [J] para continuar jogando ou [Q] para sair.\n");
-            refresh();
+            refresh();  // Atualiza a tela para mostrar a mensagem
+
             int ch = getch();
             if (ch == 'Q' || ch == 'q') {
                 game->game_over = true;
@@ -544,19 +625,23 @@ void loop_jogo(Game *game) {
                 game->winscore_reached = false; // Permite continuar jogando
             }
         } else {
-            handle_input(game);
+            // Aqui, aguardamos a entrada do jogador e lidamos com a movimentação
+            handle_input(game);  // Processa a entrada do jogador
 
+            // Se o tabuleiro estiver cheio e não houver mais movimentos possíveis
             if (check_full(game) && !can_move(game)) {
-                game->game_over = true;
+                clear(); // Limpa a tela antes de mostrar a mensagem de fim de jogo
                 printw("Fim de jogo! Não há mais movimentos possíveis.\n");
                 printw("Pressione qualquer tecla para sair.\n");
-                refresh();
-                getch();
+                refresh(); // Atualiza a tela para mostrar o fim de jogo
+                getch();  // Aguarda a interação do jogador para encerrar
+                game->game_over = true;
             }
+            
         }
     }
-    quit_game(game);
 }
+
 
 int main() {
     initscr(); // Inicializa ncurses
@@ -564,6 +649,8 @@ int main() {
     keypad(stdscr, TRUE); // Habilita captura de setas
     noecho(); // Para não exibir as teclas pressionadas na tela
     srand(time(NULL));
+    curs_set(0); // Esconde o cursor
+    init_colors(); // Inicializa as cores
 
     Game game;
     init_board(&game);
@@ -575,7 +662,8 @@ int main() {
         printw("Novo Jogo!\n");
     } else if (option == 2) {
         load_game(&game, "game.dat");
-    } else {
+    } 
+    else {
         quit_game(&game);
         endwin();
         return 0;
@@ -584,7 +672,7 @@ int main() {
     loop_jogo(&game);
     sleep(2);
 
-    quit_game(&game);
+    //quit_game(&game);
     endwin();  // Finaliza a interface ncurses
     return 0;
 }

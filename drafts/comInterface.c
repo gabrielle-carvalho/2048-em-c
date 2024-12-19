@@ -124,8 +124,6 @@ bool can_move(const Game *game) {
     return false; // Sem movimentos possíveis
 }
 
-
-
 void add_random_number(Game *game) {
     if (!can_move(game)) {
         game->game_over = true; // Não há movimentos possíveis
@@ -141,9 +139,6 @@ void add_random_number(Game *game) {
 
     game->board[i][j] = (rand() % 10 < 6) ? 2 : 4;
 }
-
-
-
 
 void init_colors() {
     if (has_colors()) {
