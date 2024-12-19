@@ -1,1 +1,15 @@
-COMO JOGAR?
+Regras do Jogo
+
+    Movimento dos Blocos:
+    Você pode mover todos os blocos do tabuleiro em uma das quatro direções: cima, baixo, esquerda ou direita.
+    USE (A, W, S, D, OU AS SETAS DO SEU TECLADO)
+
+    Combinação de Blocos:
+    Quando dois blocos com o mesmo valor se tocam (na direção do movimento), eles se combinam e formam um único bloco com o valor dobrado. Exemplo: dois blocos de 2 se combinam para formar um bloco de 4.
+
+    Novo Bloco:
+    Após cada movimento, um novo bloco (com valor 2 ou 4) aparecerá em uma posição aleatória no tabuleiro.
+
+    Fim de Jogo:
+    O jogo termina quando não há mais movimentos possíveis ou quando você alcança o bloco de 2048.
+

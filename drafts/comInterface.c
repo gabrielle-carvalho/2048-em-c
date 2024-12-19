@@ -4,8 +4,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ncurses.h> //setas teclado 
+#include <unistd.h> // Para usar sleep()
 
-#define WIN_SCORE 160
+#define WIN_SCORE 1600
 #define tam 4
 
 typedef enum {
@@ -29,7 +30,7 @@ typedef struct {
     bool winscore_reached; // flag para verificar se winscore foi atingido
 } Game;
 
-void init_board(Game *game), loop_jogo(Game *game) , quit_game(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), print_fixed_menu();
+void init_board(Game *game), init_colors(), loop_jogo(Game *game) , quit_game(Game *game), free_game(Game *game), print_board(const Game *game), backup(Game *game), update_score(Game *game), save_highscore(const Game *game), add_random_number(Game *game), move_board(Game *game, Direction dir), save_game(Game *game, const char *filename), load_game(Game *game, const char *filename), load_highscore(int *highscore), print_fixed_menu();
 int menu();
 bool check_win(Game *game), check_full(const Game *game), can_move(const Game *game);;
 
@@ -103,34 +104,14 @@ bool check_full(const Game *game) {
             }
         }
     }
-    return true;
-}
-
-bool can_move(const Game *game) {
-    for (int i = 0; i < tam; i++) {
-        for (int j = 0; j < tam; j++) {
-            if (game->board[i][j] == 0) {
-                return true; // Há espaço vazio
-            }
-            // Verifica combinações horizontais e verticais
-            if (j < tam - 1 && game->board[i][j] == game->board[i][j + 1]) {
-                return true; // Combinação horizontal possível
-            }
-            if (i < tam - 1 && game->board[i][j] == game->board[i + 1][j]) {
-                return true; // Combinação vertical possível
-            }
-        }
-    }
-    return false; // Sem movimentos possíveis
+    return !can_move(game);
 }
 
 void add_random_number(Game *game) {
-    if (!can_move(game)) {
-        game->game_over = true; // Não há movimentos possíveis
-        printw("Jogo acabou! Não há mais jogadas possíveis.\n");
-        return;
+    if (check_full(game) && !can_move(game)) {
+        game->game_over = true;
+        return; // Não há espaço para adicionar um novo número
     }
-
     int i, j;
     do {
         i = rand() % tam;
@@ -144,14 +125,23 @@ void init_colors() {
     if (has_colors()) {
         start_color();   // Inicia o suporte a cores
 
-        init_color(COLOR_RED, 1000, 0, 0);        // Vermelho suave
-        init_color(COLOR_GREEN, 0, 1000, 0);      // Verde suave
-        init_color(COLOR_BLUE, 0, 0, 1000);       // Azul suave
-        init_color(COLOR_YELLOW, 1000, 1000, 0);  // Amarelo suave
-        init_color(COLOR_CYAN, 0, 1000, 1000);    // Ciano suave
-        init_color(COLOR_MAGENTA, 1000, 0, 1000); // Magenta suave
-        init_color(COLOR_WHITE, 1000, 1000, 1000); // Branco brilhante
+        // Definir tons de cores diferentes (incluindo roxos, rosinha, verde claro e amarelo)
+        init_color(COLOR_RED, 800, 0, 0);        // Vermelho suave
+        init_color(COLOR_GREEN, 0, 800, 0);      // Verde suave
+        init_color(COLOR_BLUE, 0, 0, 800);       // Azul suave
+        init_color(COLOR_YELLOW, 800, 800, 0);   // Amarelo suave
+        init_color(COLOR_CYAN, 0, 800, 800);     // Ciano suave
+        init_color(COLOR_MAGENTA, 800, 0, 800);  // Magenta suave
+        init_color(COLOR_WHITE, 800, 800, 800);  // Branco suave
 
+        // Novos tons para números maiores, incluindo roxos, rosinha, verde claro e amarelo
+        init_color(10, 600, 300, 800);           // Roxo suave
+        init_color(11, 1000, 600, 1000);         // Roxo claro
+        init_color(12, 1000, 800, 100);          // Rosinha suave
+        init_color(13, 300, 1000, 300);          // Verde claro
+        init_color(14, 1000, 1000, 0);           // Amarelo forte (adicionado)
+
+        // Definir os pares de cores para cada número
         init_pair(1, COLOR_BLACK, COLOR_WHITE);        // Para células vazias
         init_pair(2, COLOR_BLACK, COLOR_CYAN);         // Para o número 2 (Ciano suave)
         init_pair(3, COLOR_BLACK, COLOR_GREEN);        // Para o número 4 (Verde suave)
@@ -159,22 +149,21 @@ void init_colors() {
         init_pair(5, COLOR_BLACK, COLOR_BLUE);         // Para o número 16 (Azul suave)
         init_pair(6, COLOR_BLACK, COLOR_MAGENTA);      // Para o número 32 (Magenta suave)
         init_pair(7, COLOR_BLACK, COLOR_RED);          // Para o número 64 (Vermelho suave)
-        init_pair(8, COLOR_BLACK, COLOR_GREEN);        // Para o número 128 (Verde suave)
-        init_pair(9, COLOR_BLACK, COLOR_CYAN);         // Para o número 256 (Ciano suave)
-        init_pair(10, COLOR_BLACK, COLOR_YELLOW);      // Para o número 512 (Amarelo suave)
-        init_pair(11, COLOR_BLACK, COLOR_BLUE);        // Para o número 1024 (Azul suave)
-        init_pair(12, COLOR_BLACK, COLOR_MAGENTA);     // Para o número 2048 (Magenta suave)
+        init_pair(8, COLOR_BLACK, 10);                 // Para o número 128 (Roxo suave)
+        init_pair(9, COLOR_BLACK, 14);                // Para o número 8192 (Amarelo forte)
+        init_pair(10, COLOR_BLACK, 11);                // Para o número 512 (Roxo claro)
+        init_pair(11, COLOR_BLACK, 12);                // Para o número 1024 (Rosinha suave)
+        init_pair(12, COLOR_BLACK, COLOR_GREEN);       // Para o número 2048 (Verde suave claro)
+        init_pair(13, COLOR_BLACK, 13);                // Para o número 4096 (Verde claro)
+        //init_pair(14, COLOR_BLACK, 14);                // Para o número 8192 (Amarelo forte)
     }
 }
 
-
-
-
-
 void print_board(const Game *game) {
-    clear(); // Limpa a tela
-    print_fixed_menu(); // Exibe o menu fixo no topo
+    clear(); // limpa a tela antes de exibir o novo tabuleiro
+    print_fixed_menu();  // Exibe o menu fixo sempre no topo
     printw("-----------------------------\n");
+
     for (int i = 0; i < tam; i++) {
         printw("|");
         for (int j = 0; j < tam; j++) {
@@ -185,6 +174,7 @@ void print_board(const Game *game) {
                 attroff(COLOR_PAIR(1));
             } else {
                 int color_pair = 2; // Cor padrão para 2
+                // Atribuindo cores específicas para cada número
                 if (num == 4) color_pair = 3;
                 else if (num == 8) color_pair = 4;
                 else if (num == 16) color_pair = 5;
@@ -195,6 +185,8 @@ void print_board(const Game *game) {
                 else if (num == 512) color_pair = 10;
                 else if (num == 1024) color_pair = 11;
                 else if (num == 2048) color_pair = 12;
+                else if (num == 4096) color_pair = 13;
+                else if (num == 8192) color_pair = 14;
 
                 attron(COLOR_PAIR(color_pair));
                 printw(" %4d |", num);
@@ -204,10 +196,12 @@ void print_board(const Game *game) {
         printw("\n");
         printw("-----------------------------\n");
     }
-    printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
-    refresh(); // Atualiza a tela
-}
 
+    // Exibindo a pontuação, se necessário:
+    // printw("Score: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+
+    refresh(); // atualiza a tela
+}
 
 void print_fixed_menu() {
     printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
@@ -326,134 +320,6 @@ void load_highscore(int *highscore) {
         *highscore = 0;
     }
 }
-
-// void move_board(Game *game, Direction dir) {
-//     int i, j, k;
-//     bool merged[tam][tam] = {{false}};  // Controle de combinações
-//     bool moved = false;  // Flag para saber se houve movimento
-
-//     backup(game); // Realiza o backup do estado do jogo, caso precise desfazer
-
-//     switch (dir) {
-//         case UP:
-//             for (j = 0; j < tam; j++) {
-//                 for (i = 1; i < tam; i++) {
-//                     if (game->board[i][j] != 0) {  // Encontrou um número diferente de 0
-//                         k = i;
-//                         // Move a peça para cima, procurando por espaços vazios
-//                         while (k > 0 && game->board[k-1][j] == 0) {
-//                             game->board[k-1][j] = game->board[k][j];
-//                             game->board[k][j] = 0;
-//                             k--;
-//                             moved = true;
-//                         }
-//                         // Tenta combinar as peças
-//                         if (k > 0 && game->board[k-1][j] == game->board[k][j] && !merged[k-1][j] && !merged[k][j]) {
-//                             game->board[k-1][j] *= 2;  // Combina as peças
-//                             game->score += game->board[k-1][j];  // Atualiza a pontuação
-//                             game->board[k][j] = 0;
-//                             merged[k-1][j] = true;  // Marca como já combinada
-//                             moved = true;
-//                             if (game->board[k-1][j] >= WIN_SCORE) {
-//                                 game->winscore_reached = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//             break;
-
-//         case DOWN:
-//             for (j = 0; j < tam; j++) {
-//                 for (i = tam-2; i >= 0; i--) {
-//                     if (game->board[i][j] != 0) {  // Encontrou um número diferente de 0
-//                         k = i;
-//                         // Move a peça para baixo, procurando por espaços vazios
-//                         while (k < tam-1 && game->board[k+1][j] == 0) {
-//                             game->board[k+1][j] = game->board[k][j];
-//                             game->board[k][j] = 0;
-//                             k++;
-//                             moved = true;
-//                         }
-//                         // Tenta combinar as peças
-//                         if (k < tam-1 && game->board[k+1][j] == game->board[k][j] && !merged[k+1][j] && !merged[k][j]) {
-//                             game->board[k+1][j] *= 2;  // Combina as peças
-//                             game->score += game->board[k+1][j];  // Atualiza a pontuação
-//                             game->board[k][j] = 0;
-//                             merged[k+1][j] = true;  // Marca como já combinada
-//                             moved = true;
-//                             if (game->board[k+1][j] >= WIN_SCORE) {
-//                                 game->winscore_reached = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//             break;
-
-//         case LEFT:
-//             for (i = 0; i < tam; i++) {
-//                 for (j = 1; j < tam; j++) {
-//                     if (game->board[i][j] != 0) {  // Encontrou um número diferente de 0
-//                         k = j;
-//                         // Move a peça para a esquerda
-//                         while (k > 0 && game->board[i][k-1] == 0) {
-//                             game->board[i][k-1] = game->board[i][k];
-//                             game->board[i][k] = 0;
-//                             k--;
-//                             moved = true;
-//                         }
-//                         // Tenta combinar as peças
-//                         if (k > 0 && game->board[i][k-1] == game->board[i][k] && !merged[i][k-1] && !merged[i][k]) {
-//                             game->board[i][k-1] *= 2;
-//                             game->score += game->board[i][k-1];
-//                             game->board[i][k] = 0;
-//                             merged[i][k-1] = true;
-//                             moved = true;
-//                             if (game->board[i][k-1] >= WIN_SCORE) {
-//                                 game->winscore_reached = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//             break;
-
-//         case RIGHT:
-//             for (i = 0; i < tam; i++) {
-//                 for (j = tam-2; j >= 0; j--) {
-//                     if (game->board[i][j] != 0) {  // Encontrou um número diferente de 0
-//                         k = j;
-//                         // Move a peça para a direita
-//                         while (k < tam-1 && game->board[i][k+1] == 0) {
-//                             game->board[i][k+1] = game->board[i][k];
-//                             game->board[i][k] = 0;
-//                             k++;
-//                             moved = true;
-//                         }
-//                         // Tenta combinar as peças
-//                         if (k < tam-1 && game->board[i][k+1] == game->board[i][k] && !merged[i][k+1] && !merged[i][k]) {
-//                             game->board[i][k+1] *= 2;
-//                             game->score += game->board[i][k+1];
-//                             game->board[i][k] = 0;
-//                             merged[i][k+1] = true;
-//                             moved = true;
-//                             if (game->board[i][k+1] >= WIN_SCORE) {
-//                                 game->winscore_reached = true;
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//             break;
-//     }
-
-//     if (moved) {
-//         add_random_number(game);  // Adiciona um número aleatório após o movimento, somente se houver movimento possível
-//         game->moves++;  // Incrementa o número de movimentos
-//         update_score(game);  // Atualiza o highscore se necessário
-//     }
-// }
 
 void move_board(Game *game, Direction dir) {
     int i, j, k;
@@ -584,13 +450,22 @@ void move_board(Game *game, Direction dir) {
 
     if (moved) {
         add_random_number(game); // Só adiciona um número aleatório se houve movimento
+        game->moves++;
+    }
+    else{
+        printw("Movimento invalido");
     }
 }
 
 
 void quit_game(Game *game) {
+    print_board(game);  // Exibe o estado final do tabuleiro
+    //sleep(1000);
+    printw("\nJogo encerrado. Pressione q para sair...\n");
+    refresh();  // Atualiza a tela para garantir que o texto apareça
+    getch();    // Aguarda o usuário pressionar uma tecla
     free_game(game); // Libera a memória alocada para o jogo
-    endwin(); // Fecha a janela do terminal
+    endwin();   // Fecha a janela do ncurses
     exit(0);    // Encerra o programa
 }
 
@@ -646,11 +521,29 @@ bool check_win(Game *game) {
     return false;
 }
 
+bool can_move(const Game *game) {
+    for (int i = 0; i < tam; i++) {
+        for (int j = 0; j < tam; j++) {
+            if (game->board[i][j] == 0) {
+                return true; // Ainda há espaços vazios
+            }
+            // Verificar movimentos horizontais
+            if (j < tam - 1 && game->board[i][j] == game->board[i][j + 1]) {
+                return true; // Blocos adjacentes iguais
+            }
+            // Verificar movimentos verticais
+            if (i < tam - 1 && game->board[i][j] == game->board[i + 1][j]) {
+                return true; // Blocos adjacentes iguais
+            }
+        }
+    }
+    return false; // Nenhum movimento possível
+}
 
 void handle_input(Game *game) {
-    if (game->game_over) {
-        return; // Não processa mais entradas se o jogo acabou
-    }
+    // if (game->game_over) {
+    //     return; // Não processa mais entradas se o jogo acabou
+    // }
 
     int ch = getch(); // Obtém a tecla pressionada
     switch (ch) {
@@ -705,12 +598,25 @@ void handle_game_over(Game *game) {
 
 void loop_jogo(Game *game) {
     while (!game->game_over) {
+        // Limpa a tela antes de desenhar o novo estado
+        clear();  // Limpa a tela
+        printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
+        printw("[Z] Undo | [B] Save | [Q] Quit | [H] Help\n");
+
+        // Exibe o tabuleiro atualizado
         print_board(game);
 
+        // Exibe a pontuação, highscore e número de movimentos
+        printw("\nScore: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
+        
+        refresh();  // Atualiza a tela após exibir as informações
+
+        // Verifica se o jogador atingiu a pontuação de vitória
         if (game->winscore_reached) {
             printw("Parabéns! Você atingiu a pontuação de vitória (%d)!\n", WIN_SCORE);
             printw("Pressione [J] para continuar jogando ou [Q] para sair.\n");
-            refresh();
+            refresh();  // Atualiza a tela para mostrar a mensagem
+
             int ch = getch();
             if (ch == 'Q' || ch == 'q') {
                 game->game_over = true;
@@ -718,18 +624,21 @@ void loop_jogo(Game *game) {
                 game->winscore_reached = false; // Permite continuar jogando
             }
         } else {
-            handle_input(game);
+            // Aqui, aguardamos a entrada do jogador e lidamos com a movimentação
+            handle_input(game);  // Processa a entrada do jogador
 
-            if (!can_move(game)) {
-                game->game_over = true;
+            // Se o tabuleiro estiver cheio e não houver mais movimentos possíveis
+            if (check_full(game) && !can_move(game)) {
+                clear(); // Limpa a tela antes de mostrar a mensagem de fim de jogo
                 printw("Fim de jogo! Não há mais movimentos possíveis.\n");
                 printw("Pressione qualquer tecla para sair.\n");
-                refresh();
-                getch();
+                refresh(); // Atualiza a tela para mostrar o fim de jogo
+                getch();  // Aguarda a interação do jogador para encerrar
+                game->game_over = true;
             }
+            
         }
     }
-    quit_game(game);
 }
 
 int main() {
@@ -751,15 +660,17 @@ int main() {
         printw("Novo Jogo!\n");
     } else if (option == 2) {
         load_game(&game, "game.dat");
-    } else {
+    } 
+    else {
         quit_game(&game);
         endwin();
         return 0;
     }
 
     loop_jogo(&game);
+    sleep(2);
 
-    quit_game(&game);
+    //quit_game(&game);
     endwin();  // Finaliza a interface ncurses
     return 0;
 }

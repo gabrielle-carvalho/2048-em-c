@@ -203,8 +203,8 @@ void print_board(const Game *game) {
     refresh(); // atualiza a tela
 }
 
-
 void print_fixed_menu() {
+    printw("   2048    \n");
     printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
     printw("[Z] Undo | [B] Save | [Q] Quit | [H] Help\n");
 }
@@ -458,11 +458,12 @@ void move_board(Game *game, Direction dir) {
     }
 }
 
-
 void quit_game(Game *game) {
     print_board(game);  // Exibe o estado final do tabuleiro
-    //sleep(1000);
     printw("\nJogo encerrado. Pressione q para sair...\n");
+    if(game->game_over == false){
+        save_game(game, "game_save.dat");
+    }
     refresh();  // Atualiza a tela para garantir que o texto apareça
     getch();    // Aguarda o usuário pressionar uma tecla
     free_game(game); // Libera a memória alocada para o jogo
@@ -498,14 +499,11 @@ void show_help() {
         printw("Erro ao abrir o arquivo de ajuda.\n");
         return;
     }
-
     char line[256];
     while (fgets(line, sizeof(line), fp) != NULL) {
         printw("%s", line);  // Lê e imprime o conteúdo do arquivo
     }
-
     fclose(fp);  // Fecha o arquivo
-
     printw("\nPressione qualquer tecla para voltar ao jogo...\n");
     getch();
 }
@@ -542,9 +540,9 @@ bool can_move(const Game *game) {
 }
 
 void handle_input(Game *game) {
-    // if (game->game_over) {
-    //     return; // Não processa mais entradas se o jogo acabou
-    // }
+    if (game->game_over) {
+        return; // Não processa mais entradas se o jogo acabou
+    }
 
     int ch = getch(); // Obtém a tecla pressionada
     switch (ch) {
@@ -579,40 +577,18 @@ void handle_input(Game *game) {
     }
 }
 
-void handle_game_over(Game *game) {
-    clear();
-    printw("Game Over!\n");
-    printw("Score: %d\n", game->score);
-    printw("Pressione [Q] para sair ou [R] para reiniciar.\n");
-    refresh();
-
-    while (1) {
-        int ch = getch();
-        if (ch == 'q' || ch == 'Q') {
-            quit_game(game);
-        } else if (ch == 'r' || ch == 'R') {
-            init_board(game); // Reiniciar o jogo
-            break;
-        }
-    }
-}
-
 void loop_jogo(Game *game) {
     while (!game->game_over) {
-        // Limpa a tela antes de desenhar o novo estado
         clear();  // Limpa a tela
         printw("Menu: [W] Move Up | [S] Move Down | [A] Move Left | [D] Move Right\n");
         printw("[Z] Undo | [B] Save | [Q] Quit | [H] Help\n");
 
-        // Exibe o tabuleiro atualizado
         print_board(game);
 
-        // Exibe a pontuação, highscore e número de movimentos
         printw("\nScore: %d | Highscore: %d | Moves: %d\n", game->score, game->highscore, game->moves);
         
         refresh();  // Atualiza a tela após exibir as informações
 
-        // Verifica se o jogador atingiu a pontuação de vitória
         if (game->winscore_reached) {
             printw("Parabéns! Você atingiu a pontuação de vitória (%d)!\n", WIN_SCORE);
             printw("Pressione [J] para continuar jogando ou [Q] para sair.\n");
@@ -625,10 +601,8 @@ void loop_jogo(Game *game) {
                 game->winscore_reached = false; // Permite continuar jogando
             }
         } else {
-            // Aqui, aguardamos a entrada do jogador e lidamos com a movimentação
             handle_input(game);  // Processa a entrada do jogador
 
-            // Se o tabuleiro estiver cheio e não houver mais movimentos possíveis
             if (check_full(game) && !can_move(game)) {
                 clear(); // Limpa a tela antes de mostrar a mensagem de fim de jogo
                 printw("Fim de jogo! Não há mais movimentos possíveis.\n");
@@ -641,7 +615,6 @@ void loop_jogo(Game *game) {
         }
     }
 }
-
 
 int main() {
     initscr(); // Inicializa ncurses
