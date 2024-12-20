@@ -1,7 +1,8 @@
 {
   "files.associations": {
     "ncurses.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "2048.C": "cpp"
   },
   "C_Cpp_Runner.cCompilerPath": "gcc",
   "C_Cpp_Runner.cppCompilerPath": "g++",
