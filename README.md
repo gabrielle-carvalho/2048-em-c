@@ -59,3 +59,5 @@ Durante o jogo, um menu com as seguintes opções será exibido no terminal:
 ---
 
 Divirta-se jogando e explorando o código! 🎮
+
+[Assista ao vídeo de demonstração para ver o funcionamento](https://github.com/gabrielle-carvalho/2048-em-c/blob/main/demonstracao.webm)
